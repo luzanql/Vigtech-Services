@@ -30,15 +30,15 @@
     <!-- Custom Fonts -->
     <link href="{{STATIC_URL}}font-awesome-4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
 
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-	
-	<!-- load D3js -->
-	<script src="http://www.d3plus.org/js/d3.js"></script>
+    
+    <!-- load D3js -->
+    <script src="http://www.d3plus.org/js/d3.js"></script>
  
-	<!-- load D3plus after D3js -->
-	<script src="http://www.d3plus.org/js/d3plus.js"></script>
+    <!-- load D3plus after D3js -->
+    <script src="http://www.d3plus.org/js/d3plus.js"></script>
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -61,20 +61,31 @@
                 <a class="navbar-brand" href="{% url 'home' %}" style="margin: 0px; padding: 0px"><img src="{{STATIC_URL}}img/banner2.jpg"/>
                 <!--<h2 style="margin: 0px; padding: 0px" >Vigtech</h2>--></a>
             </div>
-
                 <ul class="nav navbar-top-links navbar-right">
-
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-list-ul fa-fw"></i><span id="textselect">Mis Proyectos</span><i class="fa fa-caret-down"></i>
+                        </a>
+                        <ul id="dprojectlist" class="dropdown-menu dropdown-user" style="float:right;">
+                            {% for proyecto in proyectos%}
+                                <li><a href="{% url 'editar_proyecto' proyecto.id_proyecto%}"><i class="fa fa-plus-square-o fa-fw"></i><span id="{{proyecto.nombre}}">{{proyecto.nombre}}</span></a></li>
+                            {% endfor %}
+                            <li class="divider"></li>
+                            <li><a href="#"><i class="fa"></i>  {{mproyecto.nombre }}   </a></li>
+                            </li>
+                        </ul>
+                        
+                    <!-- /.dropdown-user -->
+                    </li>                   
                     <li class="dropdown">
                         <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                             <i class="fa fa-user fa-fw"></i> {{user.username}} <i class="fa fa-caret-down"></i>
                         </a>
-
                         <ul class="dropdown-menu dropdown-user" style="float:right;">
-                            <li><a href="#"><i class="fa fa-user fa-fw"></i> Perfil</a>
-                            </li>
-                            <!--<li><a href="#"><i class="fa fa-gear fa-fw"></i> Settings</a>
-                            </li>
-                            -->
+                            <li><a href="#"><i class="fa fa-user fa-fw"></i> Perfil</a></li>
+<!--
+                            <li><a href="#"><i class="fa fa-gear fa-fw"></i> PROYECTO</a></li>
+-->
                             <li class="divider"></li>
                             <!-- Logout...Mandar a  Login-->
                             <li><a href="{% url 'logout' %}"><i class="fa fa-sign-out fa-fw"></i> Logout</a>
@@ -82,8 +93,6 @@
                         </ul>
                     <!-- /.dropdown-user -->
                     </li> 
-
-
                 </ul>
             
         <!-- Panel izquierdo de navegacion-->
@@ -179,12 +188,12 @@
         </div>
 
     </div>
-
-
-
     <script src="{{STATIC_URL}}js/jquery.js"></script>
     <!--<script src="http://code.jquery.com/ui/1.11.0/jquery-ui.min.js"></script>-->
      <script src="{{STATIC_URL}}/lib/jquery-mobile/jquery-2.1.1.min.js"></script>
+     
+    <!-- ESTE CODIGO ES PARA LOS EVENTOS  *JAPeTo* -->
+     <script src="{{STATIC_URL}}js/jproject.js"></script>
         
     
     

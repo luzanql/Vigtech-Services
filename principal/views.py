@@ -7,13 +7,14 @@ from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
 from django.contrib import messages
 from django.template import RequestContext
+from django import template
 from models import proyecto
 from .forms import *
 import funciones
 import sys
-from administradorConsultas import AdministradorConsultas
-from manejadorArchivos import obtener_autores
-from red import Red
+#~ from administradorConsultas import AdministradorConsultas # Esta la comente JAPeTo
+#~ from manejadorArchivos import obtener_autores # Esta la comente JAPeTo
+#~ from red import Red # Esta la comente JAPeTo
 from Logica import ConsumirServicios, procesamientoScopusXml, procesamientoArxiv
 # import igraph
 import traceback
@@ -29,10 +30,21 @@ sys.setdefaultencoding('utf-8')
 #ruta = "/home/administrador/ManejoVigtech/ArchivosProyectos/"
 
 sesion_proyecto=None
+mensaje=None
+#~ proyectos_list =None
 
 class home(TemplateView):
     template_name = "home.html"
 
+    def get_context_data(self, **kwargs):
+        try:
+            proyectos_list = get_list_or_404(proyecto,  idUsuario=self.request.user)
+            model_proyecto = get_object_or_404(proyecto, id_proyecto=str(self.request.session['proyecto']))
+        except (ValueError, UnboundLocalError):
+            print traceback.format_exc()
+            proyectos_list = None
+            mproyecto = None            
+        return {'proyectos':proyectos_list, 'mproyecto':model_proyecto}
 
 class RegistrarUsuario(FormView):
     template_name = "registrarUsuario.html"
@@ -47,6 +59,7 @@ class RegistrarUsuario(FormView):
 
 @login_required
 def nuevo_proyecto(request):
+
     if request.method == 'POST':
         form = FormularioCrearProyecto(request.POST)
         fraseB = request.POST.get('fraseB')
@@ -58,6 +71,7 @@ def nuevo_proyecto(request):
         limArxiv = request.POST.get('limArxiv')
         limSco = request.POST.get('limSco')
         print limArxiv, limSco
+        global mensaje
         #print fraseB
         #Formato de frase de busqueda
         #FraseBásica,Words,FraseA,autor,before,after
@@ -67,6 +81,7 @@ def nuevo_proyecto(request):
             articulos = {}
             modelo_proyecto = form.save(commit=False)
             modelo_proyecto.idUsuario = request.user
+            #~ proyectos_list = get_list_or_404(proyecto, idUsuario=request.user)
             #modelo_proyecto.calificacion=5
             modelo_proyecto.fraseBusqueda = busqueda
             modelo_proyecto.save()
@@ -74,12 +89,15 @@ def nuevo_proyecto(request):
             #Creacion del directorio donde se guardaran los documentos respectivos del proyecto creado.
 
             funciones.CrearDirectorioProyecto(modelo_proyecto.id_proyecto, request.user)
+            proyectos_list = get_list_or_404(proyecto, idUsuario=request.user)
             if fraseB != "":
-
                 try:
                     """
                         Descarga de documentos de Google Scholar y Scopus
                     """
+                    mensaje="Descarga de documentos de Google Scholar y Scopus"
+                    print mensaje
+                    messages.add_message(request, messages.INFO ,"Descarga de documentos de Google Scholar y Scopus")
                     articulos_arxiv= ConsumirServicios.consumir_arxiv(fraseB, request.user.username, str(modelo_proyecto.id_proyecto), limArxiv)
                     articulos = ConsumirServicios.consumir_scholar(fraseB, request.user.username, str(modelo_proyecto.id_proyecto) )
                     articulos_scopus = ConsumirServicios.consumir_scopus(fraseB, request.user.username, str(modelo_proyecto.id_proyecto), limSco)
@@ -87,24 +105,32 @@ def nuevo_proyecto(request):
                     """
                         indexación
                     """
+                    mensaje="indexación"
+                    print mensaje
                     ir = ConsumirServicios.IR()
                     ir.indexar(str(request.user.username),str(modelo_proyecto.id_proyecto))
 
 
                     """"
-                    Analisis
-                    """    
+                        Analisis
+                    """
+                    mensaje="Analisis"
+                    print mensaje
                     data = ConsumirServicios.consumir_analisis(str(request.user.username),str(modelo_proyecto.id_proyecto))
 
 
                     """
-                    Analisis de Redes Sociales    
+                    Analisis de Redes Sociales
                     """
+                    mensaje="Analisis de Redes Sociales"
+                    print mensaje
                     network = ConsumirServicios.consumir_red(str(request.user.username),str(modelo_proyecto.id_proyecto))
 
                     """
                         Inserción de metadatos Arxiv
                     """
+                    mensaje="Inserción de metadatos Arxiv"
+                    print mensaje
                     xml = open("/home/vigtech/shared/repository/"+ str(request.user.username)
                                     + "." + str(modelo_proyecto.id_proyecto) + "/salida.xml")
 
@@ -116,6 +142,8 @@ def nuevo_proyecto(request):
                     """
                        Conexión con base datos para insertar metadatos de paper de Scopus
                     """
+                    mensaje="Conexión con base datos para insertar metadatos de paper de Scopus"
+                    print mensaje
                     busqueda = open("/home/vigtech/shared/repository/"+ str(request.user.username)
                                     + "." + str(modelo_proyecto.id_proyecto) + "/busqueda0.xml")
 
@@ -123,21 +151,20 @@ def nuevo_proyecto(request):
                         NAIVE BAYES
                     """
                     #ConsumirServicios.consumir_recuperacion_unidades_academicas(str(request.user.username),str(modelo_proyecto.id_proyecto))
-				
+
                     try:
                         procesamientoScopusXml.xml_to_bd(busqueda, modelo_proyecto.id_proyecto, articulos_scopus['titulos'])
                     except:
                         print traceback.format_exc()
 
                     ConsumirServicios.consumir_recuperacion_unidades_academicas(str(request.user.username),str(modelo_proyecto.id_proyecto))
-                    
-                    
+
                     messages.success(request, "Se ha creado exitosamente el proyecto")
+
+
                 except:
                     print traceback.format_exc()
                     messages.error(request, "Hubo un problema en la descarga")
-
-
 
                 #articulos = funciones.buscadorSimple(fraseB)
                 #ac = AdministradorConsultas()
@@ -156,12 +183,15 @@ def nuevo_proyecto(request):
             #funciones.moveFiles(modelo_proyecto.id_proyecto, request.user, articulos, lista_scopus)
             #funciones.escribir_archivo_documentos(modelo_proyecto.id_proyecto, request.user, articulos, lista_scopus)
             messages.success(request, "Se ha creado exitosamente el proyecto")
-            return redirect('crear_proyecto')
+            #~ return redirect('crear_proyecto')
         else:
             messages.error(request, "Imposible crear el proyecto")
     else:
         form = FormularioCrearProyecto()
-    return render(request, 'GestionProyecto/NuevoProyecto.html', {'form': form})
+    return render(request, 'GestionProyecto/NuevoProyecto.html', {'form': form}, context_instance=RequestContext(request))
+      #  proyectos_list = get_list_or_404(proyecto, idUsuario=request.user)
+
+   # return render(request, 'GestionProyecto/NuevoProyecto.html', {'form': form """ 'proyectos': proyectos_list"""}, context_instance=RequestContext(request))
 
 
 #Visualización de proyectos propios de un usuario.
@@ -194,16 +224,21 @@ def ver_otros_proyectos(request):
 
 @login_required
 def busqueda_navegacion(request):
-    return render(request, 'GestionBusqueda/Busqueda_Navegacion.html')
+    proyectos_list = get_list_or_404(proyecto, idUsuario=request.user)
+    model_proyecto = get_object_or_404(proyecto, id_proyecto=request.session["proyecto"])
+    return render(request, 'GestionBusqueda/Busqueda_Navegacion.html', {'proyectos': proyectos_list, 'mproyecto': model_proyecto}, context_instance=RequestContext(request))
 
 
 @login_required
 def editar_proyecto(request, id_proyecto):
     model_proyecto = get_object_or_404(proyecto, id_proyecto=id_proyecto)
     request.session['proyecto']= str(model_proyecto.id_proyecto)
+    request.proyecto = model_proyecto
     print  "This is my project:",request.session['proyecto']
     #nombreDirectorioAnterior=model_proyecto.nombre
     lista = funciones.crearListaDocumentos(id_proyecto, request.user, )
+    proyectos_list = get_list_or_404(proyecto,  idUsuario=request.user)
+
     if request.method == 'POST':
         proyecto_form = FormularioCrearProyecto(request.POST, instance=model_proyecto)
         #proyecto_form.fields['disponibilidad'].widget.attrs['disabled']=True
@@ -212,7 +247,7 @@ def editar_proyecto(request, id_proyecto):
             #print proyecto_form.cleaned_data
             #nuevoNombre=proyecto_form.cleaned_data['nombre']
             model_project = proyecto_form.save()
-            #	funciones.cambiarNombreDirectorio(nombreDirectorioAnterior,nuevoNombre,request.user)
+            #   funciones.cambiarNombreDirectorio(nombreDirectorioAnterior,nuevoNombre,request.user)
             messages.success(request, "Se ha modificado exitosamente el proyecto")
         else:
             messages.error(request, "Imposible editar el proyecto")
@@ -220,8 +255,10 @@ def editar_proyecto(request, id_proyecto):
         proyecto_form = FormularioCrearProyecto(instance=model_proyecto)
 
     return render(request, 'GestionProyecto/editar_proyecto.html',
-                  {'form': proyecto_form, 'lista': lista, 'user': request.user, 'proyecto': id_proyecto},
+                  {'form': proyecto_form, 'lista': lista, 'user': request.user, 'mproyecto':model_proyecto, 'proyectos': proyectos_list, 'proyecto': id_proyecto},
                   context_instance=RequestContext(request))
+
+
 
 
 @login_required
@@ -241,7 +278,7 @@ def ver_proyecto(request, id_proyecto):
 def buscador(request):
     if request.method == 'GET':
         ir = ConsumirServicios.IR()
-        
+
         fraseBusqueda = request.GET.get("busquedaIR")
         # IR.consultar(fraseBusqueda,"","")
         data = ir.consultar(fraseBusqueda,str(request.user.username),request.session['proyecto'])
@@ -262,28 +299,28 @@ def analisisView(request):
     proyecto = str(request.user.username) + "." + str(request.session['proyecto'])
     with open("/home/vigtech/shared/repository/" + proyecto + "/coautoria.json") as json_file:
         data = json.load(json_file)
-    
-    
+
+
 
     #nodos, aristas = r.generar_json()
     nodos1 = json.dumps(data['nodes'])
     aristas1 = json.dumps(data['links'])
-    
+
    # return render(request, "GestionAnalisis/coautoria.html", {"nodos": nodos1, "aristas": aristas1})
     return render(request, "GestionAnalisis/coautoria.html", {"nodos": nodos1, "aristas": aristas1})
     #return render(request, "GestionAnalisis/coautoria2.html", {"proyecto":proyecto})
-@login_required    
+@login_required
 def coautoria_old(request):
     proyecto = str(request.user.username) + "." + str(request.session['proyecto'])
     with open("/home/vigtech/shared/repository/" + proyecto + "/coautoria.json") as json_file:
         data = json.load(json_file)
-    
-    
+
+
 
     #nodos, aristas = r.generar_json()
     nodos1 = json.dumps(data['nodes'])
     aristas1 = json.dumps(data['links'])
-    
+
    # return render(request, "GestionAnalisis/coautoria.html", {"nodos": nodos1, "aristas": aristas1})
     return render(request, "GestionAnalisis/Analisis.html", {"nodos": nodos1, "aristas": aristas1})
 @login_required
@@ -380,14 +417,28 @@ def analisis_indicadores(request):
     #print proyecto
     #return render(request, "GestionAnalisis/paisesbar.html",{"labels": labels, "values": values})
     return render(request, "GestionAnalisis/indicadores.html",{"data":data})
+
 @login_required
 def clasificacion_eisc(request):
     proyecto = str(request.user.username) + "." + str(request.session['proyecto'])
     with open("/home/vigtech/shared/repository/" + proyecto + "/eisc.json") as json_file:
         data = json.load(json_file)
-    
+
     eids = data['clasificacion']
     adminBD = AdminBD()
     papers =adminBD.get_papers_eid(eids)
     return render (request, "GestionEISC/clasificacion_eisc.html", {"papers": papers})
 
+
+
+def logmensajes(request):
+    if request.method == 'GET':
+        return HttpResponse(
+            json.dumps({"mensaje": mensaje}),
+            content_type="application/json"
+        )
+    else:
+        return HttpResponse(
+            json.dumps({"mensaje": ""}),
+            content_type="application/json"
+        )

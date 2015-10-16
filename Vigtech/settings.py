@@ -60,7 +60,7 @@ WSGI_APPLICATION = 'Vigtech.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-
+"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -71,6 +71,19 @@ DATABASES = {
         'PORT': '49153',
     }
 }
+"""
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'docker',
+        'USER': 'postgres',
+        'PASSWORD': 'root',
+        'HOST':'localhost',
+        'PORT': '',
+    }
+}
+
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR,'templates'),
